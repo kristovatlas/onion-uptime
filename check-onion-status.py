@@ -209,13 +209,17 @@ def send_email(message):
 	msg['Subject'] = 'WARNING: ' + site_descriptor + ' is down'
 	msg['From'] = email_address_from
 	msg['To'] = email_address_to
+	to_list = email_address_to
+	if (',' in email_address_to):
+		#multiple recipients
+		to_list = email_address_to.split(",")
 
 	s = smtplib.SMTP(email_server)
 	try:
 		s.login(email_username, email_password)
 	except:
 		print("Error: Trouble logging in... check your mail server, username, and password?")
-	s.sendmail(msg['From'], msg['To'], msg.as_string())
+	s.sendmail(msg['From'], to_list, msg.as_string())
 	s.quit()
 
 def email_results(is_quota_exceeded, is_exception, exception, timestamp):
