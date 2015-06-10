@@ -25,6 +25,9 @@ import ConfigParser
 #set the current working directory to the location of the script
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
+#error handling
+import sys, traceback
+
 #################
 # CONFIGURATION #
 #################
@@ -59,6 +62,15 @@ tor_proxy_port = int(config.get('Settings','tor_proxy_port'))
 
 LOGGING_ON  = config.get('Options','LOGGING_ON')	#Log all status to file
 EMAILING_ON = config.get('Options','EMAILING_ON')	#Send email when down
+
+#Include first n bytes of HTTP response body in alert email
+INCLUDE_CONTENTS_IN_ALERT = config.get('Options','INCLUDE_CONTENTS_IN_ALERT')
+NUM_BYTES_CONTENTS_IN_ALERT = int(config.get('Options','NUM_BYTES_CONTENTS_IN_ALERT'))
+
+#assertion: num_bytes varaiable should be a non-negative integer always
+if (isinstance(NUM_BYTES_CONTENTS_IN_ALERT,(int,long)) == False or NUM_BYTES_CONTENTS_IN_ALERT < 0):
+	print("Invalid value for NUM_BYTES_CONTENTS_IN_ALERT in configuration file; must be a non-negative integer.")
+	sys.exit(0)
 
 ##################
 # EMAIL SETTINGS #
@@ -222,23 +234,29 @@ def send_email(message):
 	s.sendmail(msg['From'], to_list, msg.as_string())
 	s.quit()
 
-def email_results(is_quota_exceeded, is_exception, exception, timestamp):
+def email_results(is_quota_exceeded, is_exception, exception, timestamp, page):
 	global is_time_to_send_email
 	global uptime_stats_str
 	if (EMAILING_ON):
-		'''if (is_time_to_send_email):
-			print "DEBUG: True"
+		'''
+		if (is_time_to_send_email):
+			print "DEBUG: It is time to send an email."
 		else:
-			print "DEBUG: False"'''
+			print "DEBUG: An email has been sent too recently to send another"
+		'''
 		if (is_time_to_send_email and (is_quota_exceeded or is_exception)):
 			print("Sending alert email to %s..." % email_address_to)
 			timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(timestamp_format)
-			send_email("The .onion site '%s' is currently down as of %s with exception '%s'. %s" % (target_url, timestamp, exception, uptime_stats_str))
+			message = "The .onion site '%s' is currently down as of %s with exception '%s'. %s" % (target_url, timestamp, exception, uptime_stats_str)
+			if (INCLUDE_CONTENTS_IN_ALERT):
+				body = page[0:NUM_BYTES_CONTENTS_IN_ALERT] #TODO: try catch block
+				message += " The body of the response starts with: '%s'" % body
+			send_email(message)
 			write_to_log_with_timestamp("Alert email has been sent.")
 		else:
 			print("Email sent too recently for threshold, will not send now.")
 
-def process_results(is_quota_exceeded, is_exception, exception):
+def process_results(is_quota_exceeded, is_exception, exception, page):
 	global uptime_stats_str
 	#this function is called only after the current status of the website has been evaluated, and expressed through
 	# the function params
@@ -250,7 +268,7 @@ def process_results(is_quota_exceeded, is_exception, exception):
 	#present restults on stdout, logfile, and email where appropriate
 	print_results(is_quota_exceeded, is_exception, exception, timestamp)
 	log_results(is_quota_exceeded, is_exception, exception, timestamp)
-	email_results(is_quota_exceeded, is_exception, exception, timestamp)
+	email_results(is_quota_exceeded, is_exception, exception, timestamp, page)
 
 #From: https://stackoverflow.com/questions/5148589/python-urllib-over-tor
 
@@ -287,6 +305,6 @@ if (site_down_substring in page):
 	is_quota_exceeded = True
 
 #inform script user of the results of the query
-process_results(is_quota_exceeded, is_exception, exception)
+process_results(is_quota_exceeded, is_exception, exception, page)
 
 print("Done.")
