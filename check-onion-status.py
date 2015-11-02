@@ -7,7 +7,7 @@ Author: kristovatlas [at-symbol] gmail [period] com
 import socks #pip install SocksiPy-branch
 import socket
 import urllib2
-import httplib.IncompleteRead
+import httplib
 
 #timestamp
 import time
