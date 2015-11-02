@@ -150,7 +150,13 @@ def uptime_stats():
 	if (os.path.isfile(log_filename)):
 		with open(log_filename, "r") as logfile:
 			for line in logfile:
-				line_timestamp = line[1:20]
+				line_timestamp = ''
+				try:
+					line_timestamp = line[1:20]
+				except IndexError as e:
+					#this line in the log file is short for some reason, skip it
+					continue
+				
 				line_epoch = int(time.mktime(time.strptime(line_timestamp, timestamp_format)))
 
 				if ('Quota exceeded' in line):
@@ -250,8 +256,13 @@ def email_results(is_quota_exceeded, is_exception, exception, timestamp, page):
 			timestamp = datetime.datetime.fromtimestamp(time.time()).strftime(timestamp_format)
 			message = "The .onion site '%s' is currently down as of %s with exception '%s'. %s" % (target_url, timestamp, exception, uptime_stats_str)
 			if (INCLUDE_CONTENTS_IN_ALERT):
-				body = page[0:NUM_BYTES_CONTENTS_IN_ALERT] #TODO: try catch block
-				message += " The body of the response starts with: '%s'" % body
+				body = ''
+				try:
+					body = page[0:NUM_BYTES_CONTENTS_IN_ALERT] #TODO: try catch block
+				except IndexError as e:
+					#for some bizarre reason the contents if 'page' are shorter than expected. Just set body to whatever is there.
+					body = page
+				message += " The body of the response starts with: '%s'" % str(body)
 			send_email(message)
 			write_to_log_with_timestamp("Alert email has been sent.")
 		else:
