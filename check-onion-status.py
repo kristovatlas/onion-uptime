@@ -7,6 +7,7 @@ Author: kristovatlas [at-symbol] gmail [period] com
 import socks #pip install SocksiPy-branch
 import socket
 import urllib2
+import httplib.IncompleteRead
 
 #timestamp
 import time
@@ -295,7 +296,10 @@ page = ''
 
 try:
 	page = urllib2.urlopen(target_url).read()
-
+except httplib.IncompleteRead as e:
+	is_exception = True
+	exception = str(e)
+	page = e.partial
 except Exception as e:
 	is_exception = True
 	exception = str(e) #report the Exception as a string
