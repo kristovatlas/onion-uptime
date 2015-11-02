@@ -229,8 +229,8 @@ def send_email(message):
 	s = smtplib.SMTP(email_server)
 	try:
 		s.login(email_username, email_password)
-	except:
-		print("Error: Trouble logging in... check your mail server, username, and password?")
+	except Exception as e:
+		print("Error: Trouble logging in... check your mail server, username, and password? Msg: " + str(e))
 	s.sendmail(msg['From'], to_list, msg.as_string())
 	s.quit()
 
